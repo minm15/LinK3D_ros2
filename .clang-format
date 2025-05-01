@@ -1,0 +1,6 @@
+BasedOnStyle: LLVM
+IndentWidth: 4        # 縮排空格數
+ColumnLimit: 100      # 最大行長
+AllowShortIfStatementsOnASingleLine: false
+DerivePointerAlignment: false
+PointerAlignment: Left

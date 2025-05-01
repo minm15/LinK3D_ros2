@@ -595,6 +595,7 @@ namespace LinK3D_SLAM
         computeCluster(areaCloud, clustered);
         
         keyPoints = getAggregationKeyPt(clustered, index);
+        std::cout << keyPoints.size() << std::endl;
         
         getDescriptor(keyPoints, descriptors);         
     }

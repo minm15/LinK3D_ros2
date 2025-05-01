@@ -1,62 +1,46 @@
-cmake_minimum_required(VERSION 2.8.3)
-project(LinK3D)
+cmake_minimum_required(VERSION 3.5)
+project(link3d)
 
-set(CMAKE_BUILD_TYPE "Release")
-set(CMAKE_CXX_FLAGS "-std=c++11")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
-set(CMAKE_CXX_STANDARD 17)
+if(NOT CMAKE_CXX_STANDARD)
+  set(CMAKE_CXX_STANDARD 17)
+endif()
 
-find_package(catkin REQUIRED COMPONENTS
-  cv_bridge
-  geometry_msgs
-  nav_msgs
-  pcl_ros
-  roscpp
-  roslib
-  rospy
-  sensor_msgs
-  std_msgs
-  visualization_msgs
-)
-
-find_package(Boost REQUIRED COMPONENTS system filesystem)
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
+find_package(pcl_conversions REQUIRED)
+find_package(PCL REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(PCL REQUIRED)
-
-
-catkin_package(
-    INCLUDE_DIRS include
-    CATKIN_DEPENDS cv_bridge geometry_msgs nav_msgs pcl_ros roscpp roslib rospy sensor_msgs std_msgs visualization_msgs
-    DEPENDS EIGEN3 PCL
-)
-
+find_package(cv_bridge REQUIRED)
 
 include_directories(
-    include
+  include
   ${PCL_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIR}
-  ${Boost_INCLUDE_DIR}
-  ${catkin_INCLUDE_DIRS}
 )
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 add_library(${PROJECT_NAME} SHARED
-src/LinK3D_extractor.cpp )
+  src/LinK3D_extractor.cpp
+)
+ament_target_dependencies(${PROJECT_NAME}
+  Eigen3 OpenCV PCL cv_bridge pcl_conversions sensor_msgs visualization_msgs
+)
 
-target_link_libraries(${PROJECT_NAME}
-${catkin_LIBRARIES} 
-${Boost_LIBRARIES}
-${OpenCV_LIBS}
-${EIGEN3_LIBS}
-${PCL_LIBRARIES})
-
-link_directories(${PCL_LIBRARY_DIRS})
-
-add_executable(link3d_bin src/BinMain.cpp)
-target_link_libraries(link3d_bin ${PROJECT_NAME})
 
 add_executable(link3d_rosbag src/RosbagMain.cpp)
+ament_target_dependencies(link3d_rosbag
+  rclcpp sensor_msgs visualization_msgs pcl_conversions PCL cv_bridge
+)
 target_link_libraries(link3d_rosbag ${PROJECT_NAME})
 
+install(
+  TARGETS ${PROJECT_NAME} link3d_rosbag
+  DESTINATION lib/${PROJECT_NAME}
+)
+install(DIRECTORY include/ DESTINATION include/)
+install(DIRECTORY launch/ DESTINATION share/${PROJECT_NAME}/launch)
+install(DIRECTORY rviz/ DESTINATION share/${PROJECT_NAME}/rviz)
 
+ament_package()
