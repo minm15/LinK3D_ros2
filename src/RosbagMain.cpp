@@ -71,12 +71,10 @@ void ransacForEdgePt(const MatPt& matchedEdgePt,
 
     for (auto& c : corrs) {
         const auto& mp = matchedEdgePt[c.index_query];
-        // 由兩個 PointXYZSCA 構造 pair
         vTrueMatchedEdgePoint.emplace_back(mp[0], mp[1]);
     }
 }
 
-//── 全域點雲緩衝與 callback ─────────────────────────────────────────────────
 static queue<sensor_msgs::msg::PointCloud2::ConstSharedPtr> cloudBuffer;
 static mutex mBuf;
 
@@ -89,7 +87,7 @@ int main(int argc, char** argv) {
     rclcpp::init(argc, argv);
     auto node = rclcpp::Node::make_shared("link3d_rosbag");
 
-    // 參數
+    // param
     int scan_line = 32;
     node->declare_parameter("scan_line", scan_line);
     node->get_parameter("scan_line", scan_line);
@@ -107,7 +105,7 @@ int main(int argc, char** argv) {
     // LiK3D extractor
     auto extractor = make_shared<LinK3D_Extractor>(scan_line, 0.1f, 0.4f, 0.3f, 0.3f, 12, 4, 3);
 
-    // 緩存上一帧
+    // cache the last frame
     auto currentCloud = make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     auto lastCloud = make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     vector<pcl::PointXYZ> lastKeyPts;
@@ -123,14 +121,12 @@ int main(int argc, char** argv) {
 
     while (rclcpp::ok()) {
         if (!cloudBuffer.empty()) {
-            // 取出与转换
             {
                 lock_guard<mutex> lk(mBuf);
                 pcl::fromROSMsg(*cloudBuffer.front(), *currentCloud);
                 cloudBuffer.pop();
             }
 
-            // 提取特徵
             vector<pcl::PointXYZ> curKeyPts;
             cv::Mat curDesc;
             vector<int> curIdx;
@@ -139,7 +135,7 @@ int main(int argc, char** argv) {
             extractor->filterLowSmooth(curClustered, curHighSmooth);
 
             if (count > 0) {
-                // 匹配
+                // match
                 vector<pair<int, int>> vMatched, vTrueMatch;
                 extractor->matcher(curDesc, lastDesc, vMatched);
                 MatPt matchedEdge;
@@ -151,7 +147,7 @@ int main(int argc, char** argv) {
                 vector<pair<PointXYZSCA, PointXYZSCA>> vTrueEdges;
                 ransacForEdgePt(matchedEdge, vTrueEdges);
 
-                // Marker 发布
+                // Marker publish
                 visualization_msgs::msg::Marker ml;
                 ml.header.frame_id = "map";
                 ml.header.stamp = node->get_clock()->now();
@@ -168,7 +164,6 @@ int main(int argc, char** argv) {
                     const auto& p2s = pr.second;
                     Eigen::Vector3d p2t = T * Eigen::Vector3d(p2s.x, p2s.y, p2s.z);
 
-                    // 改用 default construct + field 賦值
                     geometry_msgs::msg::Point P1;
                     P1.x = p1s.x;
                     P1.y = p1s.y;
@@ -186,21 +181,21 @@ int main(int argc, char** argv) {
                 }
                 pubMarker->publish(ml);
 
-                // key_point 发布
+                // key_point publish
                 sensor_msgs::msg::PointCloud2 outK;
                 pcl::toROSMsg(allKP, outK);
                 outK.header.stamp = node->get_clock()->now();
                 outK.header.frame_id = "map";
                 pubKeyPoint->publish(outK);
 
-                // full_cloud1 发布
+                // full_cloud1 publish
                 sensor_msgs::msg::PointCloud2 outC1;
                 pcl::toROSMsg(*currentCloud, outC1);
                 outC1.header.stamp = node->get_clock()->now();
                 outC1.header.frame_id = "map";
                 pubFullCloud1->publish(outC1);
 
-                // full_cloud2 发布 (上一帧)
+                // full_cloud2 publish
                 pcl::PointCloud<pcl::PointXYZ> lastT;
                 for (auto& pt : lastCloud->points) {
                     auto tp = T * Eigen::Vector3d(pt.x, pt.y, pt.z);
@@ -213,7 +208,7 @@ int main(int argc, char** argv) {
                 pubFullCloud2->publish(outC2);
             }
 
-            // 更新上一帧数据
+            // update the data from last frame
             *lastCloud = *currentCloud;
             lastKeyPts = curKeyPts;
             lastDesc = curDesc.clone();
